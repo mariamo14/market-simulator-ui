@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Text, Heading } from "@chakra-ui/react";
+import { Box, Text, Heading, Flex, Icon } from "@chakra-ui/react";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 
 const mockStockData = [
   { symbol: "AAPL", price: 175.55, change: "+1.5%" },
@@ -15,9 +16,22 @@ export const StockList: React.FC = () => {
       </Heading>
       {mockStockData.map((stock) => (
         <Box mb={4} key={stock.symbol}>
-          <Text fontWeight="bold">{stock.symbol}</Text>
+          <Flex justify="space-between" align="center">
+            <Text fontWeight="bold">{stock.symbol}</Text>
+            <Flex align="center">
+              {stock.change.includes("+") ? (
+                <Icon as={FaArrowUp} color="green.400" mr={2} />
+              ) : (
+                <Icon as={FaArrowDown} color="red.400" mr={2} />
+              )}
+              <Text
+                color={stock.change.includes("+") ? "green.400" : "red.400"}
+              >
+                {stock.change}
+              </Text>
+            </Flex>
+          </Flex>
           <Text>Price: ${stock.price}</Text>
-          <Text>Change: {stock.change}</Text>
         </Box>
       ))}
     </Box>

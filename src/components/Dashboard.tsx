@@ -11,7 +11,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Dashboard */}
       <Box flex="1" p={6} bg="gray.100">
-        {/* Order Book Table */}
+        {/* Order Book and Price Graph */}
         <OrderBook />
       </Box>
     </Flex>
