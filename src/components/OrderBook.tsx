@@ -80,7 +80,6 @@ export const OrderBook: React.FC = () => {
           );
 
           // Extract timestamps and prices for the company
-          const labels = companyData.map((stock) => stock.timestamp);
           const prices = companyData.map((stock) => stock.price);
 
           // Return the dataset for the company
@@ -126,8 +125,8 @@ export const OrderBook: React.FC = () => {
       <Heading size="md" mb={4}>
         Stock Price Graph
       </Heading>
-      <Box mb={8}>
-        <Line data={chartData} />
+      <Box mb={8} width="100%" height="400px">
+        <Line data={chartData} options={{ maintainAspectRatio: false }} />
       </Box>
 
       <Heading size="md" mb={4}>
