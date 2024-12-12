@@ -22,7 +22,7 @@ export const StockList: React.FC = () => {
   useEffect(() => {
     // Fetch stock data from the backend
     axios
-      .get("http://localhost:8080/api/stocks")
+      .get("http://localhost:8080/api/stocks?symbols=AAPL,GOOGL,AMZN")
       .then((response) => {
         const data: StockPrice[] = response.data;
 
