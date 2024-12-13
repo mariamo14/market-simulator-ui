@@ -20,9 +20,9 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import axios from "axios"; // Import Axios
+import axios from "axios";
 
-// Register the scales and components
+// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -33,19 +33,23 @@ ChartJS.register(
   Legend
 );
 
-// Type for Stock Price Data
+// Type definitions
 type StockPrice = {
   companyName: string;
   timestamp: string;
   price: number;
 };
 
-// Proper type for Chart Data
+type OrderBookEntry = {
+  price: number;
+  volume: number;
+};
+
 interface ChartData {
   labels: string[];
   datasets: {
     label: string;
-    data: number[];
+    data: (number | null)[]; // Allow null values in the dataset
     fill: boolean;
     borderColor: string;
     tension: number;
@@ -53,57 +57,71 @@ interface ChartData {
 }
 
 export const OrderBook: React.FC = () => {
-  // State for storing stock data from backend
   const [stockData, setStockData] = useState<StockPrice[]>([]);
+  const [orderBookData, setOrderBookData] = useState<OrderBookEntry[]>([]);
   const [chartData, setChartData] = useState<ChartData>({
     labels: [],
     datasets: [],
   });
 
   useEffect(() => {
-    // Fetch data from the backend
+    // Fetch stock price data
     axios
       .get("http://localhost:8080/api/stocks?symbols=AAPL,GOOGL,AMZN")
       .then((response) => {
         const data: StockPrice[] = response.data;
 
-        // Extract unique companies from the data and convert Set to Array
+        // Extract unique company names
         const companyNames = Array.from(
           new Set(data.map((stock) => stock.companyName))
         );
 
-        // Extract datasets for each company
+        // Align timestamps
+        const allTimestamps = Array.from(
+          new Set(data.map((stock) => stock.timestamp))
+        ).sort();
+
+        // Create datasets for each company
         const datasets = companyNames.map((companyName) => {
-          // Filter data for the current company
           const companyData = data.filter(
             (stock) => stock.companyName === companyName
           );
 
-          // Extract timestamps and prices for the company
-          const prices = companyData.map((stock) => stock.price);
+          // Map prices to aligned timestamps
+          const prices = allTimestamps.map((timestamp) => {
+            const stock = companyData.find((s) => s.timestamp === timestamp);
+            return stock ? stock.price : null; // Fill gaps with null
+          });
 
-          // Return the dataset for the company
           return {
             label: `${companyName} Price`,
             data: prices,
             fill: false,
-            borderColor: getRandomColor(), // Assign a random color to each company
+            borderColor: getRandomColor(),
             tension: 0.1,
           };
         });
 
-        // Update the chart data state
+        // Update the chart data
         setChartData({
-          labels: data.map((stock) => stock.timestamp), // Use all timestamps for labels
+          labels: allTimestamps,
           datasets,
         });
       })
-      .catch((error) => {
-        console.error("Error fetching stock data from backend:", error);
-      });
+      .catch((error) => console.error("Error fetching stock data:", error));
+
+    // Fetch order book data
+    axios
+      .get("http://localhost:8080/api/stocks?symbols=AAPL,GOOGL,AMZN")
+      .then((response) => {
+        setOrderBookData(response.data); // Assume the response is an array of OrderBookEntry
+      })
+      .catch((error) =>
+        console.error("Error fetching order book data:", error)
+      );
   }, []);
 
-  // Function to generate random colors for different datasets
+  // Function to generate random colors for datasets
   const getRandomColor = () => {
     const letters = "0123456789ABCDEF";
     let color = "#";
@@ -112,13 +130,6 @@ export const OrderBook: React.FC = () => {
     }
     return color;
   };
-
-  // Mock data for the order book (this can be replaced with backend integration later)
-  const mockOrderBookData = [
-    { price: 175.55, volume: 500 },
-    { price: 175.5, volume: 300 },
-    { price: 175.45, volume: 1000 },
-  ];
 
   return (
     <Box>
@@ -140,10 +151,10 @@ export const OrderBook: React.FC = () => {
           </Tr>
         </Thead>
         <Tbody>
-          {mockOrderBookData.map((order, index) => (
+          {orderBookData.map((entry, index) => (
             <Tr key={index}>
-              <Td>${order.price}</Td>
-              <Td>{order.volume}</Td>
+              <Td>${entry.price.toFixed(2)}</Td>
+              <Td>{entry.volume}</Td>
             </Tr>
           ))}
         </Tbody>
