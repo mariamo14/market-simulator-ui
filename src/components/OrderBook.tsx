@@ -21,6 +21,7 @@ import {
   Legend,
 } from "chart.js";
 import axios from "axios";
+import { SearchBar } from "./SearchBar"; // Import the SearchBar component
 
 // Register Chart.js components
 ChartJS.register(
@@ -57,7 +58,8 @@ interface ChartData {
 }
 
 export const OrderBook: React.FC = () => {
-  const [stockData, setStockData] = useState<StockPrice[]>([]);
+  const [stockData, setStockData] = useState<StockPrice[]>([]); // All stock data
+  const [filteredStockData, setFilteredStockData] = useState<StockPrice[]>([]); // Filtered stock data
   const [orderBookData, setOrderBookData] = useState<OrderBookEntry[]>([]);
   const [chartData, setChartData] = useState<ChartData>({
     labels: [],
@@ -70,56 +72,82 @@ export const OrderBook: React.FC = () => {
       .get("http://localhost:8080/api/stocks?symbols=AAPL,GOOGL,AMZN")
       .then((response) => {
         const data: StockPrice[] = response.data;
-
-        // Extract unique company names
-        const companyNames = Array.from(
-          new Set(data.map((stock) => stock.companyName))
-        );
-
-        // Align timestamps
-        const allTimestamps = Array.from(
-          new Set(data.map((stock) => stock.timestamp))
-        ).sort();
-
-        // Create datasets for each company
-        const datasets = companyNames.map((companyName) => {
-          const companyData = data.filter(
-            (stock) => stock.companyName === companyName
-          );
-
-          // Map prices to aligned timestamps
-          const prices = allTimestamps.map((timestamp) => {
-            const stock = companyData.find((s) => s.timestamp === timestamp);
-            return stock ? stock.price : null; // Fill gaps with null
-          });
-
-          return {
-            label: `${companyName} Price`,
-            data: prices,
-            fill: false,
-            borderColor: getRandomColor(),
-            tension: 0.1,
-          };
-        });
-
-        // Update the chart data
-        setChartData({
-          labels: allTimestamps,
-          datasets,
-        });
+        setStockData(data); // Save the raw data
+        setFilteredStockData(data); // Initialize filtered data to all data
+        updateChart(data); // Update the chart with all data
       })
       .catch((error) => console.error("Error fetching stock data:", error));
 
     // Fetch order book data
     axios
-      .get("http://localhost:8080/api/stocks?symbols=AAPL,GOOGL,AMZN")
+      .get("http://localhost:8080/api/orderbook") // Replace with the correct endpoint for order book
       .then((response) => {
-        setOrderBookData(response.data); // Assume the response is an array of OrderBookEntry
+        const data: OrderBookEntry[] = response.data;
+        setOrderBookData(data); // Save the order book data
       })
       .catch((error) =>
         console.error("Error fetching order book data:", error)
       );
   }, []);
+
+  // Function to update the chart data
+  const updateChart = (data: StockPrice[]) => {
+    // Extract unique company names
+    const companyNames = Array.from(
+      new Set(data.map((stock) => stock.companyName))
+    );
+
+    // Align timestamps
+    const allTimestamps = Array.from(
+      new Set(data.map((stock) => stock.timestamp))
+    ).sort();
+
+    // Create datasets for each company
+    const datasets = companyNames.map((companyName) => {
+      const companyData = data.filter(
+        (stock) => stock.companyName === companyName
+      );
+
+      const prices = allTimestamps.map((timestamp) => {
+        const stock = companyData.find((s) => s.timestamp === timestamp);
+        return stock ? stock.price : null; // Fill gaps with null
+      });
+
+      return {
+        label: `${companyName} Price`,
+        data: prices,
+        fill: false,
+        borderColor: getRandomColor(),
+        tension: 0.1,
+      };
+    });
+
+    setChartData({
+      labels: allTimestamps,
+      datasets,
+    });
+  };
+
+  // Handle search action from SearchBar
+  const handleSearch = (query: string) => {
+    if (!query.trim()) {
+      setFilteredStockData(stockData); // Reset to all data if query is empty
+      updateChart(stockData);
+      return;
+    }
+
+    const filtered = stockData.filter((stock) =>
+      stock.companyName.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredStockData(filtered); // Update filtered data
+    updateChart(filtered); // Update the chart
+  };
+
+  // Handle clear action from SearchBar
+  const handleClearSearch = () => {
+    setFilteredStockData(stockData); // Reset filtered data to all stocks
+    updateChart(stockData); // Reset the chart to all stocks
+  };
 
   // Function to generate random colors for datasets
   const getRandomColor = () => {
@@ -133,6 +161,10 @@ export const OrderBook: React.FC = () => {
 
   return (
     <Box>
+      {/* Search Bar */}
+      <SearchBar onSearch={handleSearch} onClear={handleClearSearch} />
+
+      {/* Stock Price Graph */}
       <Heading size="md" mb={4}>
         Stock Price Graph
       </Heading>
@@ -140,6 +172,7 @@ export const OrderBook: React.FC = () => {
         <Line data={chartData} options={{ maintainAspectRatio: false }} />
       </Box>
 
+      {/* Order Book */}
       <Heading size="md" mb={4}>
         Order Book
       </Heading>
